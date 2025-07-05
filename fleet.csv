@@ -1,0 +1,53 @@
+import numpy as np
+import pandas as pd
+
+# Seed for reproducibility
+np.random.seed(42)
+
+# Configuration
+num_vehicles = 5
+days = 30
+fleet = []
+
+# Generate synthetic fleet data
+for v_id in range(num_vehicles):
+    base_health = 100
+    usage_factor = np.random.uniform(0.8, 1.2)
+    charging_pattern = np.random.choice(['slow', 'fast'])
+    climate = np.random.choice(['temperate', 'hot', 'cold'])
+    degradation_rate = 0.05 * usage_factor
+    if charging_pattern == 'fast':
+        degradation_rate *= 1.15
+    if climate == 'hot':
+        degradation_rate *= 1.2
+    elif climate == 'cold':
+        degradation_rate *= 1.1
+    health = [base_health]
+    for day in range(1, days):
+        new_health = max(health[-1] - degradation_rate + np.random.normal(0, 0.03), 60)
+        health.append(new_health)
+    df = pd.DataFrame({
+        'vehicle_id': v_id,
+        'day': np.arange(days),
+        'battery_health': health,
+        'charging': charging_pattern,
+        'climate': climate
+    })
+    fleet.append(df)
+
+# Combine all vehicle data
+fleet_df = pd.concat(fleet)
+
+# Create summary with health status
+summary_df = fleet_df.groupby('vehicle_id')['battery_health'].last().reset_index()
+summary_df['health_status'] = pd.cut(
+    summary_df['battery_health'],
+    bins=[0, 70, 85, 100],
+    labels=['🔴 Critical', '🟠 Degrading', '🟢 Healthy']
+)
+
+# Save to CSV files
+fleet_df.to_csv("fleet_daily_data.csv", index=False)
+summary_df.to_csv("fleet_summary.csv", index=False)
+
+print("✅ Files saved: fleet_daily_data.csv, fleet_summary.csv")
